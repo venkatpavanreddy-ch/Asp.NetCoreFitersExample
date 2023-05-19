@@ -1,19 +1,24 @@
-using WebApplication5.Models;
-using Microsoft.Extensions.Configuration;
-using WebApplication5.Common;
-using WebApplication5.Filters;
 using WebApplication5.Common.Services;
+using WebApplication5.Filters;
+using WebApplication5.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 var Configuration = builder.Configuration;
+builder.Host.ConfigureAppConfiguration((context, config) =>
+{
+    var settings = config.Build();
+    var url = $"https://{settings["KeyVaultConfiguration:KeyVault"]}.vault.azure.net/";
+    var keyVaultClientId = settings["KeyVaultConfiguration:ClientId"];
+    var keyVaultClientSecret = settings["KeyVaultConfiguration:ClientSecret"];
+    config.AddAzureKeyVault(url, keyVaultClientId, keyVaultClientSecret);
+});
 
 // Add services to the container.
-
-builder.Services.AddScoped<ICryptoService, CryptoService>();
+builder.Services.AddTransient<ICryptoService, CryptoService>();
 CryptoSettings cryptoSettings = new CryptoSettings
 {
-    AesCryptoKey = Configuration.GetValue<string>("CryptoSettings:AesCryptoKey"),
-    AesCryptoIV = Configuration.GetValue<string>("CryptoSettings:AesCryptoIV")
+    AesCryptoKey = Configuration["AesCryptoKey"],
+    AesCryptoIV = Configuration["AesCryptoIV"]
 };
 builder.Services.AddSingleton(cryptoSettings);
 builder.Services.AddControllers(options =>
@@ -36,9 +41,6 @@ AuthSettings authlSettings = new AuthSettings
     scope = Configuration.GetValue<string>("AuthSettings:scope")
 };
 builder.Services.AddSingleton(authlSettings);
-
-
-
 
 builder.Services.AddCors(options =>
 {
